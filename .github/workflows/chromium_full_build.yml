@@ -106,26 +106,24 @@ jobs:
           echo "=== cipd version ==="
           ./cipd version
 
-          echo "=== search CIPD packages (diagnostic) ==="
-          ./cipd search gn 2>&1 | head -n 40 || true
-          echo "---"
-          ./cipd search ninja 2>&1 | head -n 40 || true
-          echo "---"
-          ./cipd search luci-auth 2>&1 | head -n 40 || true
-          echo "---"
-          ./cipd search vpython 2>&1 | head -n 40 || true
-
           echo "=== write cipd ensure file ==="
           cat > /tmp/cipd_ensure.txt <<'CIPD_EOF'
-          luci-auth@latest
-          vpython3@latest
           gn/gn/linux-amd64@latest
           infra/ninja/linux-amd64@latest
+          infra/tools/luci-auth/linux-amd64@latest
+          infra/tools/vpython3/linux-amd64@latest
           CIPD_EOF
           cat /tmp/cipd_ensure.txt
 
           echo "=== cipd ensure ==="
-          ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt
+          ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt || {
+            echo "cipd ensure failed, trying minimal set (gn + ninja only)"
+            cat > /tmp/cipd_ensure.txt <<'CIPD_EOF'
+          gn/gn/linux-amd64@latest
+          infra/ninja/linux-amd64@latest
+          CIPD_EOF
+            ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt
+          }
 
           echo "=== ensure_bootstrap ==="
           ./ensure_bootstrap
