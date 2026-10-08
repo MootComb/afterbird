@@ -92,7 +92,7 @@ jobs:
             libnss3-dev \
             default-jdk-headless
 
-      - name: Install depot_tools (with bootstrap)
+      - name: Install depot_tools
         run: |
           set -euo pipefail
 
@@ -101,7 +101,12 @@ jobs:
           export PATH="$HOME/depot_tools:$PATH"
 
           cd "$HOME/depot_tools"
-          python3 bootstrap_python3.py
+
+          echo "=== depot_tools bootstrap-related files ==="
+          ls -la | grep -Ei 'bootstrap|cipd|vpython|\.py$' || true
+
+          echo "=== gclient --version (triggers bootstrap) ==="
+          gclient --version
 
           echo "=== python3_bin_reldir.txt ==="
           ls -l "$HOME/depot_tools/python3_bin_reldir.txt"
@@ -120,12 +125,13 @@ jobs:
           gclient --version
 
           echo "=== which autoninja ==="
-          which autoninja
+          which autoninja || true
           autoninja --version || true
 
       - name: Verify depot_tools in PATH
         run: |
           set -euo pipefail
+          export PATH="$HOME/depot_tools:$PATH"
           echo "PATH=$PATH"
           echo "which gn: $(which gn)"
           echo "which gclient: $(which gclient)"
