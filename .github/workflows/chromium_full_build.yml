@@ -101,12 +101,21 @@ jobs:
           export PATH="$HOME/depot_tools:$PATH"
 
           cd "$HOME/depot_tools"
+          chmod +x ./cipd ./ensure_bootstrap
 
-          echo "=== depot_tools bootstrap-related files ==="
-          ls -la | grep -Ei 'bootstrap|cipd|vpython|\.py$' || true
+          echo "=== cipd version ==="
+          ./cipd version
 
-          echo "=== gclient --version (triggers bootstrap) ==="
-          gclient --version
+          echo "=== cipd ensure: luci-auth, vpython3, gn, ninja ==="
+          ./cipd ensure -root "$HOME/depot_tools" -ensure-file - <<'EOF'
+          $ luci-auth
+          $ vpython3
+          $ gn
+          $ ninja
+          EOF
+
+          echo "=== ensure_bootstrap ==="
+          ./ensure_bootstrap
 
           echo "=== python3_bin_reldir.txt ==="
           ls -l "$HOME/depot_tools/python3_bin_reldir.txt"
@@ -116,27 +125,40 @@ jobs:
           which python3
           python3 --version
 
-          echo "=== which gn ==="
-          which gn
+          echo "=== which -a gn ==="
+          which -a gn || true
+          echo "=== gn --version ==="
           gn --version
 
-          echo "=== which gclient ==="
-          which gclient
+          echo "=== which -a gclient ==="
+          which -a gclient || true
+          echo "=== gclient --version ==="
           gclient --version
 
-          echo "=== which autoninja ==="
-          which autoninja || true
+          echo "=== which -a autoninja ==="
+          which -a autoninja || true
           autoninja --version || true
+
+          echo "=== ls depot_tools/gn* ==="
+          ls -l "$HOME/depot_tools/"gn* || true
+
+          echo "=== ls depot_tools/.cipd_bin ==="
+          ls -l "$HOME/depot_tools/.cipd_bin" || true
 
       - name: Verify depot_tools in PATH
         run: |
           set -euo pipefail
           export PATH="$HOME/depot_tools:$PATH"
           echo "PATH=$PATH"
-          echo "which gn: $(which gn)"
-          echo "which gclient: $(which gclient)"
-          echo "which autoninja: $(which autoninja)"
+          echo "--- which -a gn ---"
+          which -a gn
+          echo "--- which -a gclient ---"
+          which -a gclient
+          echo "--- which -a autoninja ---"
+          which -a autoninja
+          echo "--- gn --version ---"
           gn --version
+          echo "--- gclient --version ---"
           gclient --version
 
       - name: Run Chromium full build pipeline
