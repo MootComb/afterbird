@@ -106,42 +106,60 @@ jobs:
           echo "=== cipd version ==="
           ./cipd version
 
-          echo "=== cipd_bin_setup.sh ==="
-          ./cipd_bin_setup.sh
+          echo "=== search CIPD packages (diagnostic) ==="
+          ./cipd search gn 2>&1 | head -n 40 || true
+          echo "---"
+          ./cipd search ninja 2>&1 | head -n 40 || true
+          echo "---"
+          ./cipd search luci-auth 2>&1 | head -n 40 || true
+          echo "---"
+          ./cipd search vpython 2>&1 | head -n 40 || true
 
-          echo "=== ls .cipd_bin ==="
-          ls -la "$HOME/depot_tools/.cipd_bin" || true
+          echo "=== write cipd ensure file ==="
+          cat > /tmp/cipd_ensure.txt <<'CIPD_EOF'
+          luci-auth@latest
+          vpython3@latest
+          gn/gn/linux-amd64@latest
+          infra/ninja/linux-amd64@latest
+          CIPD_EOF
+          cat /tmp/cipd_ensure.txt
+
+          echo "=== cipd ensure ==="
+          ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt
 
           echo "=== ensure_bootstrap ==="
           ./ensure_bootstrap
 
+          echo "=== ls .cipd_bin ==="
+          ls -la "$HOME/depot_tools/.cipd_bin" || true
+
           echo "=== python3_bin_reldir.txt ==="
-          ls -l "$HOME/depot_tools/python3_bin_reldir.txt"
-          cat "$HOME/depot_tools/python3_bin_reldir.txt"
+          ls -l "$HOME/depot_tools/python3_bin_reldir.txt" || true
+          cat "$HOME/depot_tools/python3_bin_reldir.txt" || true
 
           echo "=== which python3 ==="
-          which python3
-          python3 --version
+          which python3 || true
+          python3 --version || true
 
           echo "=== which -a gn ==="
           which -a gn || true
           echo "=== gn --version ==="
-          gn --version
+          gn --version || true
 
           echo "=== which -a gclient ==="
           which -a gclient || true
           echo "=== gclient --version ==="
-          gclient --version
+          gclient --version || true
 
           echo "=== which -a autoninja ==="
           which -a autoninja || true
           autoninja --version || true
 
-          echo "=== ls depot_tools/gn* ==="
-          ls -l "$HOME/depot_tools/"gn* || true
+          echo "=== find gn binary ==="
+          find "$HOME/depot_tools" -maxdepth 4 -name 'gn' \( -type f -o -type l \) 2>/dev/null || true
 
-          echo "=== ls depot_tools/.cipd_bin ==="
-          ls -l "$HOME/depot_tools/.cipd_bin" || true
+          echo "=== find ninja binary ==="
+          find "$HOME/depot_tools" -maxdepth 4 -name 'ninja' \( -type f -o -type l \) 2>/dev/null || true
 
       - name: Verify depot_tools in PATH
         run: |
@@ -149,15 +167,15 @@ jobs:
           export PATH="$HOME/depot_tools:$PATH"
           echo "PATH=$PATH"
           echo "--- which -a gn ---"
-          which -a gn
+          which -a gn || true
           echo "--- which -a gclient ---"
-          which -a gclient
+          which -a gclient || true
           echo "--- which -a autoninja ---"
-          which -a autoninja
+          which -a autoninja || true
           echo "--- gn --version ---"
-          gn --version
+          gn --version || true
           echo "--- gclient --version ---"
-          gclient --version
+          gclient --version || true
 
       - name: Run Chromium full build pipeline
         env:
@@ -167,9 +185,9 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/depot_tools:$PATH"
 
-          echo "[workflow] which gn: $(which gn)"
-          echo "[workflow] which gclient: $(which gclient)"
-          echo "[workflow] which autoninja: $(which autoninja)"
+          echo "[workflow] which gn: $(which gn || echo MISSING)"
+          echo "[workflow] which gclient: $(which gclient || echo MISSING)"
+          echo "[workflow] which autoninja: $(which autoninja || echo MISSING)"
 
           ci/chromium_android_pipeline.sh \
             --workdir "$RUNNER_TEMP/afterbird-chromium" \
