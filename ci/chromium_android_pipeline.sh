@@ -447,10 +447,14 @@ main() {
   REFERENCE_ARGS_FILE="${REPO_ROOT}/.build/args/${ARGS_VARIANT}.gn"
   [[ -f "${REFERENCE_ARGS_FILE}" ]] || die "Missing args variant file: ${REFERENCE_ARGS_FILE}"
 
-  if ! command -v gclient >/dev/null 2>&1 && [[ -d "${HOME}/depot_tools" ]]; then
+  if [[ -d "${HOME}/depot_tools" ]]; then
     export PATH="${HOME}/depot_tools:${PATH}"
-    log "Added ${HOME}/depot_tools to PATH"
+    log "Ensured ${HOME}/depot_tools is in PATH"
   fi
+
+  log "which gn: $(command -v gn || echo MISSING)"
+  log "which gclient: $(command -v gclient || echo MISSING)"
+  log "which autoninja: $(command -v autoninja || echo MISSING)"
 
   require_cmd awk
   require_cmd git
