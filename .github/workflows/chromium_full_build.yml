@@ -51,10 +51,25 @@ jobs:
       - name: Add swap
         run: |
           set -euo pipefail
+
+          if swapon --show | grep -q '/swapfile'; then
+            echo "Swap already active:"
+            swapon --show
+            free -h
+            exit 0
+          fi
+
+          if [ -e /swapfile ]; then
+            sudo swapoff /swapfile || true
+            sudo rm -f /swapfile
+          fi
+
           sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
+
+          swapon --show
           free -h
 
       - name: Install host dependencies
