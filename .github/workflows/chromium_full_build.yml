@@ -101,24 +101,16 @@ jobs:
           export PATH="$HOME/depot_tools:$PATH"
 
           cd "$HOME/depot_tools"
-          chmod +x ./cipd ./ensure_bootstrap
+          chmod +x ./cipd ./ensure_bootstrap ./cipd_bin_setup.sh
 
           echo "=== cipd version ==="
           ./cipd version
 
-          echo "=== write cipd ensure file ==="
-          cat > /tmp/cipd_ensure.txt <<'CIPD_EOF'
-          luci-auth
-          vpython3
-          gn
-          ninja
-          CIPD_EOF
+          echo "=== cipd_bin_setup.sh ==="
+          ./cipd_bin_setup.sh
 
-          echo "=== cipd ensure file content ==="
-          cat /tmp/cipd_ensure.txt
-
-          echo "=== cipd ensure ==="
-          ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt
+          echo "=== ls .cipd_bin ==="
+          ls -la "$HOME/depot_tools/.cipd_bin" || true
 
           echo "=== ensure_bootstrap ==="
           ./ensure_bootstrap
