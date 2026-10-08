@@ -106,13 +106,19 @@ jobs:
           echo "=== cipd version ==="
           ./cipd version
 
-          echo "=== cipd ensure: luci-auth, vpython3, gn, ninja ==="
-          ./cipd ensure -root "$HOME/depot_tools" -ensure-file - <<'EOF'
-          $ luci-auth
-          $ vpython3
-          $ gn
-          $ ninja
-          EOF
+          echo "=== write cipd ensure file ==="
+          cat > /tmp/cipd_ensure.txt <<'CIPD_EOF'
+          luci-auth
+          vpython3
+          gn
+          ninja
+          CIPD_EOF
+
+          echo "=== cipd ensure file content ==="
+          cat /tmp/cipd_ensure.txt
+
+          echo "=== cipd ensure ==="
+          ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt
 
           echo "=== ensure_bootstrap ==="
           ./ensure_bootstrap
