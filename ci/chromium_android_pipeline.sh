@@ -197,7 +197,11 @@ solutions = [
     "url": "${CHROMIUM_SRC_GIT_URL}",
     "managed": False,
     "custom_deps": {},
-    "custom_vars": {},
+    "custom_vars": {
+      "checkout_pgo_profiles": False,
+      "checkout_nacl": False,
+      "checkout_android": True,
+    },
   },
 ]
 target_os = ["android"]
@@ -340,6 +344,25 @@ run_gn_checks() {
   local out_path="${WORKDIR}/src/${OUT_DIR}"
   mkdir -p "${out_path}"
   cp "${REFERENCE_ARGS_FILE}" "${out_path}/args.gn"
+
+  # --- ccache injection (opt-in via ENABLE_CCACHE=1) ---
+  if [[ "${ENABLE_CCACHE:-0}" == "1" || "${ENABLE_CCACHE:-}" == "true" ]]; then
+    if command -v ccache >/dev/null 2>&1; then
+      log "ccache detected: $(command -v ccache) — adding cc_wrapper to args.gn"
+      # Idempotent: only append if not already present.
+      if ! grep -q '^cc_wrapper[[:space:]]*=' "${out_path}/args.gn"; then
+        {
+          echo ''
+          echo '# Injected by ci/chromium_android_pipeline.sh (ENABLE_CCACHE=1)'
+          echo 'cc_wrapper = "ccache"'
+        } >> "${out_path}/args.gn"
+      else
+        log "cc_wrapper already present in args.gn — leaving as-is"
+      fi
+    else
+      warn "ENABLE_CCACHE is set but ccache is not installed — skipping"
+    fi
+  fi
 
   pushd "${WORKDIR}/src" >/dev/null
   log "Running gn gen ${OUT_DIR}"
