@@ -64,7 +64,10 @@ jobs:
         run: |
           set -euo pipefail
           if swapon --show | grep -q '/swapfile'; then
-            swapon --show; free -h; exit 0
+            echo "Swap already active:"
+            swapon --show
+            free -h
+            exit 0
           fi
           if [ -e /swapfile ]; then
             sudo swapoff /swapfile || true
@@ -82,9 +85,20 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y \
-            git python3 python3-pip python3-venv rsync curl \
-            ca-certificates xz-utils unzip zip pkg-config \
-            libglib2.0-dev libnss3-dev default-jdk-headless \
+            git \
+            python3 \
+            python3-pip \
+            python3-venv \
+            rsync \
+            curl \
+            ca-certificates \
+            xz-utils \
+            unzip \
+            zip \
+            pkg-config \
+            libglib2.0-dev \
+            libnss3-dev \
+            default-jdk-headless \
             ccache
 
       - name: ccache setup
@@ -112,6 +126,7 @@ jobs:
       - name: Install depot_tools
         run: |
           set -euo pipefail
+
           if [ ! -d "$HOME/depot_tools/.git" ]; then
             git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$HOME/depot_tools"
           fi
@@ -121,16 +136,21 @@ jobs:
           cd "$HOME/depot_tools"
           chmod +x ./cipd ./ensure_bootstrap ./cipd_bin_setup.sh
 
+          echo "=== cipd version ==="
           ./cipd version
 
+          echo "=== write cipd ensure file ==="
           cat > /tmp/cipd_ensure.txt <<'CIPD_EOF'
           gn/gn/linux-amd64 latest
           infra/ninja/linux-amd64 latest
           infra/tools/luci-auth/linux-amd64 latest
           infra/tools/vpython3/linux-amd64 latest
           CIPD_EOF
+          cat /tmp/cipd_ensure.txt
 
+          echo "=== cipd ensure ==="
           ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt || {
+            echo "cipd ensure failed, trying minimal set (gn + ninja only)"
             cat > /tmp/cipd_ensure.txt <<'CIPD_EOF'
           gn/gn/linux-amd64 latest
           infra/ninja/linux-amd64 latest
@@ -138,11 +158,55 @@ jobs:
             ./cipd ensure -root "$HOME/depot_tools" -ensure-file /tmp/cipd_ensure.txt
           }
 
+          echo "=== ensure_bootstrap ==="
           ./ensure_bootstrap
 
+          echo "=== ls .cipd_bin ==="
+          ls -la "$HOME/depot_tools/.cipd_bin" || true
+
+          echo "=== python3_bin_reldir.txt ==="
+          ls -l "$HOME/depot_tools/python3_bin_reldir.txt" || true
+          cat "$HOME/depot_tools/python3_bin_reldir.txt" || true
+
+          echo "=== which python3 ==="
+          which python3 || true
+          python3 --version || true
+
+          echo "=== which -a gn ==="
           which -a gn || true
+          echo "=== gn --version ==="
           gn --version || true
+
+          echo "=== which -a gclient ==="
+          which -a gclient || true
+          echo "=== gclient --version ==="
+          gclient --version || true
+
+          echo "=== which -a autoninja ==="
           which -a autoninja || true
+          autoninja --version || true
+
+          echo "=== find gn binary ==="
+          find "$HOME/depot_tools" -maxdepth 4 -name 'gn' \( -type f -o -type l \) 2>/dev/null || true
+
+          echo "=== find ninja binary ==="
+          find "$HOME/depot_tools" -maxdepth 4 -name 'ninja' \( -type f -o -type l \) 2>/dev/null || true
+
+      - name: Verify depot_tools in PATH
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/depot_tools:$PATH"
+          echo "PATH=$PATH"
+          echo "--- which -a gn ---"
+          which -a gn || true
+          echo "--- which -a gclient ---"
+          which -a gclient || true
+          echo "--- which -a autoninja ---"
+          which -a autoninja || true
+          echo "--- gn --version ---"
+          gn --version || true
+          echo "--- gclient --version ---"
+          gclient --version || true
 
       - name: Run Chromium full build pipeline
         env:
@@ -157,12 +221,20 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$HOME/depot_tools:$PATH"
+
+          echo "[workflow] which gn: $(which gn || echo MISSING)"
+          echo "[workflow] which gclient: $(which gclient || echo MISSING)"
+          echo "[workflow] which autoninja: $(which autoninja || echo MISSING)"
+          echo "[workflow] ENABLE_CCACHE=$ENABLE_CCACHE"
+          echo "[workflow] SHALLOW_SYNC=$SHALLOW_SYNC"
+          echo "[workflow] NINJA_JOBS=$NINJA_JOBS"
+          echo "[workflow] CCACHE_DIR=$CCACHE_DIR"
+
           ci/chromium_android_pipeline.sh \
             --workdir "$RUNNER_TEMP/afterbird-chromium" \
             --out-dir "${{ github.event.inputs.out_dir }}" \
             --target "${{ github.event.inputs.target }}" \
-            --full-build \
-            --ninja-jobs "${{ github.event.inputs.ninja_jobs }}"
+            --full-build
 
       - name: ccache stats
         if: always() && github.event.inputs.enable_ccache == 'true'
